@@ -8,7 +8,7 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojurescript "0.0-1847"]
                  [org.clojure/core.async "0.1.0-SNAPSHOT"]
-                 [com.cemerick/piggieback "0.0.5"]
+                 [com.cemerick/piggieback "0.1.0"]
                  ;[org.clojure/core.match "0.2.0-rc5"]
                  ; Attempts to get repl working correctly.  
                  ;[org.clojure/google-closure-library-third-party "0.0-2029"]
@@ -16,12 +16,15 @@
                  ;[org.clojure/google-closure-library "0.0-20130212-95c19e7f0f5f"]
                  [compojure "1.1.5"]
                  [ring "1.2.0"]
+                 [prismatic/dommy "0.1.1"]
                  ;[ring/ring-core "1.2.0"]
                  ;[ring/ring-devel "1.2.0"]
                  ;[http-kit "2.1.8"]
                  ]
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+
+  ; So ordinary clj repl can be turned into a clojurescript repl via (browser-repl)
   :injections [(require '[cljs.repl.browser :as brepl]
                         '[cemerick.piggieback :as pb])
                (defn browser-repl []
