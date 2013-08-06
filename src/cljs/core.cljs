@@ -8,7 +8,7 @@
             [clojure.browser.repl :as repl])
   (:use-macros
    [dommy.macros :only [sel sel1 node]]
-   [nanfott.macros :only [make-shape]])
+)
   ;(:require-macros [cljs.core.async.macros :refer [go alt!]])
 )
 
