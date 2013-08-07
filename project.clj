@@ -9,17 +9,10 @@
                  [org.clojure/clojurescript "0.0-1847"]
                  [org.clojure/core.async "0.1.0-SNAPSHOT"]
                  [com.cemerick/piggieback "0.1.0"]
-                 ;[org.clojure/core.match "0.2.0-rc5"]
-                 ; Attempts to get repl working correctly.  
-                 ;[org.clojure/google-closure-library-third-party "0.0-2029"]
-                 ;[org.clojure/google-closure-library "0.0-2029-2"]
-                 ;[org.clojure/google-closure-library "0.0-20130212-95c19e7f0f5f"]
                  [compojure "1.1.5"]
                  [ring "1.2.0"]
                  [prismatic/dommy "0.1.1"]
-                 ;[ring/ring-core "1.2.0"]
-                 ;[ring/ring-devel "1.2.0"]
-                 ;[http-kit "2.1.8"]
+                 [instaparse "1.2.2"]
                  ]
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
@@ -44,14 +37,17 @@
   :source-paths ["src/clj"]
 
   :cljsbuild 
-  {:builds
-   [{:id "nanfott"
-     :source-paths ["src/cljs"]
-     :compiler {:optimizations :whitespace
-                :pretty-print true
-                :output-dir "out" 
-                :output-to "resources/public/js/main.js"
-                }}]}
+  {:crossovers [nanfott.sared]}
+  :crossover-path "src/cljx"
+
+  :builds
+  [{:id "nanfott"
+    :source-paths ["src/cljs"]
+    :compiler {:optimizations :whitespace
+               :pretty-print true
+               :output-dir "out" 
+               :output-to "resources/public/js/main.js"
+               }}]
 )
 
 ; lein cljsbuild once
