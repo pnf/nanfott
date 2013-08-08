@@ -37,17 +37,16 @@
   :source-paths ["src/clj"]
 
   :cljsbuild 
-  {:crossovers [nanfott.sared]}
-  :crossover-path "src/cljx"
 
-  :builds
-  [{:id "nanfott"
-    :source-paths ["src/cljs"]
-    :compiler {:optimizations :whitespace
-               :pretty-print true
-               :output-dir "out" 
-               :output-to "resources/public/js/main.js"
-               }}]
+  {:crossovers [nanfott.parse]
+   :builds
+   [{:id "nanfott"
+     :source-paths ["src/cljs"]
+     :compiler {:optimizations :whitespace
+                :pretty-print true
+                :output-dir "out" 
+                :output-to "resources/public/js/main.js"
+                }}]}
 )
 
 ; lein cljsbuild once
