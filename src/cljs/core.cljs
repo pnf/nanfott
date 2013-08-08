@@ -1,5 +1,5 @@
 (ns nanfott.core
-  (:require ;[cljs.core.async :refer [>! <! chan put! take! timeout close!]]
+  (:require [cljs.core.async :refer [>! <! chan put! take! timeout close!]]
             [goog.dom :as dom]
             ;[clojure.browser.dom :as dom]
             [dommy.utils :as utils]
@@ -10,7 +10,7 @@
   (:use-macros
    [dommy.macros :only [sel sel1 node]]
    )
-  ;(:require-macros [cljs.core.async.macros :refer [go alt!]])
+  (:require-macros [cljs.core.async.macros :refer [go alt!]])
 )
 
 ;; (def x (dmy/set-style! (node [:div {:id "dot"}]) "z-index" "1" "-webkit-transition" "left 2s ease, top 2s ease"   "width" "10px" "height" "10px" "background-color" "red" "position" "absolute" "left" "30px" "top" "30px"))
@@ -36,6 +36,8 @@
   (update [shape attr])
   (archname [shape]))
 
+(defn )
+
 (defrecord Triangle [attr element]
   Shape
   (build [shape]
@@ -50,7 +52,7 @@
                           "border-left"   (str (/ size 2) "px solid transparent")
                           "border-right" (str (/ size 2) "px solid transparent")
                           "position" "absolute"
-                          "-webkit-transition" " left 2s ease, top 2s ease"
+                          "-webkit-transition" " width 2s ease, height 2s ease"
                           "-webkit-transform" (str "rotate(" rotation "deg) ")])
         element           (apply (partial dmy/set-style! element) style)]
     (->Triangle attr element)))
@@ -58,8 +60,55 @@
     (build (->Triangle attr (:element shape))))
   (archname [shape] "triangle")
 )
-
 (def triangle ->Triangle)
+
+(defrecord Circle [attr element]
+  Shape
+  (build [shape]
+   (let [{:keys [element attr]} shape
+        {:keys [x y size rotation color]} attr
+        element  (or element (dommy.macros/node [:div {:id (str (gensym))}]))
+        style    (concat ["width"   (str size)
+                          "height"  (str size)
+                          "background" color
+                          "-webkit-border-radius" (str (/ size 2))
+                          "moz-border-radius" (str (/ size 2))
+                          "border-radius" (str (/ size 2))
+                          "position" "absolute"
+                          "left"    (str x)
+                          "bottom"  (str y)
+                          "-webkit-transition" " width 2s ease, height 2s ease"
+                          "-webkit-transform" (str "rotate(" rotation "deg) ")])
+        element           (apply (partial dmy/set-style! element) style)]
+    (->Circle attr element)))
+  (update [shape attr]
+    (build (->Circle attr (:element shape))))
+  (archname [shape] "circle")
+)
+(def circle ->Circle)
+
+
+(defrecord Square [attr element]
+  Shape
+  (build [shape]
+   (let [{:keys [element attr]} shape
+        {:keys [x y size rotation color]} attr
+        element  (or element (dommy.macros/node [:div {:id (str (gensym))}]))
+        style    (concat ["width"   (str size)
+                          "height"  (str size)
+                          "background" color
+                          "position" "absolute"
+                          "left"    (str x)
+                          "bottom"  (str y)
+                          "-webkit-transition" " width 2s ease, height 2s ease"
+                          "-webkit-transform" (str "rotate(" rotation "deg) ")])
+        element           (apply (partial dmy/set-style! element) style)]
+    (->Square attr element)))
+  (update [shape attr]
+    (build (->Square attr (:element shape))))
+  (archname [shape] "square")
+)
+(def square ->Square)
 
 (def items (atom {}))
 
@@ -84,7 +133,7 @@
 
 ;(defn update-shape [shape & fvs] (adjust-shape shape identity fvs))
 
-(def archetypes {"triangle" ->Triangle})
+(def archetypes {"triangle" ->Triangle "circle" ->Circle "square" ->Square} )
 (defn make [fctyp] 
   "fctyp is either a factory function or a string representing an archetype"
   (let [fcty  (if (fn? fctyp) fctyp (archetypes fctyp))
@@ -97,7 +146,8 @@
 
 (defn rename [old new]
   "move shape from items register under old name to new name"
-  (swap! items (fn [m] (let [s (m old)] (dissoc m old) (assoc m new s)))))
+  (swap! items (fn [m] (let [s (m old)] (dissoc m old) (assoc m new s))))
+  (str old " is now named " new))
 
 (def it "it")
 
@@ -108,8 +158,8 @@
 (def dirs {"up" [+ :y 100] "down" [- :y 100] "left" [- :x 100] "right" [+ :x 100]})
 (defn move [kshape dir]  (adjust-shape kshape (dirs dir)))
 
-(def rotns {:right [+ :rotation 22.5] :left [- :rotation 22.5]})
-(defn turn [shape dir] (adjust-shape shape (rotns dir)))
+(def rotns {"right" [+ :rotation 22.5] "left" [- :rotation 22.5]})
+(defn turn [kshape dir] (adjust-shape kshape (rotns dir)))
 
 (defn newv [a b] b)
 
@@ -117,9 +167,11 @@
 (def blue "blue")
 (def green "green")
 (def yellow "yellow")
-(defn color [shape c] (adjust-shape shape [newv :color c]))
 
-(def verbs {"make" make "move" move "turn" turn})
+(defn color [shape c] (adjust-shape shape [newv :color c]))
+(def paint color)
+
+(def verbs {"make" make "move" move "turn" turn "name" rename})
 
 (defn do-something [line] 
   "sugar for people who don't like to type parentheses.  Check only that
@@ -133,3 +185,31 @@ the first string is a known verb, and the second exists."
      :else (apply fn arg moreargs)
      )
     ))
+
+(def input (sel1 :#input))
+(def output (sel1 :#output))
+
+(defn events [el type]
+  (let [out (chan)]
+    (dmy/listen! el type (fn [e] (put! out e)))
+    out))
+
+(defn eval-input []
+  (let [line (.-value input)
+        cur  (.-value output)
+        res  (if (> (count line) 0)
+               (try  (do-something line) 
+                     (catch js/Object e (str "Error " e)))
+               "Can I help you?")]
+    (set! (.-value output) (str res "\n" line "\n" res))
+    (set! (.-value input) "")
+    )
+)
+
+(defn start []
+  (let [c (events input :keydown)]
+    (go (while true
+          (let [v (<! c)
+                v (.-keyCode v)]
+            (if (= v 13) (eval-input)))))))
+
