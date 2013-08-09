@@ -6,8 +6,9 @@
   :repositories {"sonatype-staging"
                  "https://oss.sonatype.org/content/groups/staging/"}
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [org.clojure/clojurescript "0.0-1847"]
+                 [org.clojure/clojurescript "0.0-1853"]
                  [org.clojure/core.async "0.1.0-SNAPSHOT"]
+                 [org.clojure/core.match "0.2.0-rc5"]
                  [com.cemerick/piggieback "0.1.0"]
                  [compojure "1.1.5"]
                  [ring "1.2.0"]
