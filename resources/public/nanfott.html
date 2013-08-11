@@ -1,0 +1,56 @@
+<html>
+    <head>
+        <style type="text/css">
+            #outerBox {
+                position: relative;
+	        width: 50%;
+                height: 50%;
+	        border: 5px solid black;
+	        float: left;
+            }
+	    #instructions {
+	        left: 10px;
+                position: relative;
+	    }
+	    #cmdlist {
+	        list-style-type: none;
+	    }
+        </style>
+    </head>
+    <body>
+	<div id="outerBox"> </div>
+	<div id="instructions">
+	  <ul id="cmdlist">
+	    <li>MAKE CIRCLE    &#x25CC;</li>
+	    <li>MAKE SQUARE    &#x25A1;</li>	
+	    <li>MAKE TRIANGLE  &#x25B5;</li>
+	    <p/>
+	    <li>NAME IT NAN</li>
+	    <li>NAME IT VIV</li>
+	    <li>NAME IT PLUM</li>
+	    <p/>
+	    <li>TURN NAN RIGHT  &#x20D5;</li>
+	    <li>TURN IT LEFT   &#x20D4;</li>
+	    <li>TURN VIV RIGHT 45</li>
+	    <p/>
+	    <li>MOVE IT UP    &#x2191;</li>
+	    <li>MOVE IT DOWN  &#x2193;</li>
+	    <li>MOVE VIV RIGHT &#x2192;</li>
+	    <li>MOVE IT LEFT  &#x2190;</li>
+	    <li>MOVE IT UP 10</li>
+	    <p/>
+	    <li>GROW IT</li>
+	    <li>SHRINK IT</li>
+	    <li>GROW NAN 5</li>
+	  </ul>
+	</div>
+	<p/>
+	<textarea id="output" rows="4" cols="50" readonly>
+        </textarea>
+	<p/>
+	<input type="text" id="input" size="50">
+
+        <script src="js/main.js" type="text/javascript"></script>
+	<script> nanfott.core.start() </script>
+    </body>
+</html>

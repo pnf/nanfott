@@ -36,7 +36,6 @@
   (update [shape attr])
   (archname [shape]))
 
-(defn )
 
 (defrecord Triangle [attr element]
   Shape
@@ -136,13 +135,14 @@
 (def archetypes {"triangle" ->Triangle "circle" ->Circle "square" ->Square} )
 (defn make [fctyp] 
   "fctyp is either a factory function or a string representing an archetype"
-  (let [fcty  (if (fn? fctyp) fctyp (archetypes fctyp))
-        empty (fcty default-shape nil)
-        shape (build  empty)
-        arch  (archname shape)]
-        (dmy/append! box (:element shape))
-    (swap! items #(assoc % "it" shape arch shape))
-    shape))
+  (if-let [fcty  (if (fn? fctyp) fctyp (archetypes fctyp))]
+    (let  [empty (fcty default-shape nil)
+           shape (build  empty)
+           arch  (archname shape)]
+      (dmy/append! box (:element shape))
+      (swap! items #(assoc % "it" shape arch shape))
+      (str "We made a " fctyp))
+    "We don't know how to make that"))
 
 (defn rename [old new]
   "move shape from items register under old name to new name"
@@ -151,15 +151,40 @@
 
 (def it "it")
 
+(defn sgn [i] (cond (> i 0) 1 (< i 0) -1 :else 0))
+
+(defn parseNumber [amt]
+  (let [x (js/parseFloat amt)]
+    (if (js/isNaN x) (throw (js/Error. "not a number!")) x)))
+
+(defn adjust-amt [[f k v] [amt] scale]
+  "If amt is specified, change v to signum(v)*int(amt)"
+  (if (nil? amt) [f k v]
+      (try (let [x (int (* scale (sgn v) (parseNumber amt)))] [f k x])
+           (catch js/Object e (throw (js/Error. (str amt " is not a number:" e)))))))
+
 (def up "up")
 (def down "down")
 (def right "right")
 (def left "left")
 (def dirs {"up" [+ :y 100] "down" [- :y 100] "left" [- :x 100] "right" [+ :x 100]})
-(defn move [kshape dir]  (adjust-shape kshape (dirs dir)))
+
+(defn move [kshape dir & amt]  (adjust-shape kshape (adjust-amt (dirs dir) amt 10)))
 
 (def rotns {"right" [+ :rotation 22.5] "left" [- :rotation 22.5]})
-(defn turn [kshape dir] (adjust-shape kshape (rotns dir)))
+
+(defn turn [kshape dir & amt]
+  (if-let [d (rotns dir)]
+    (adjust-shape kshape (adjust-amt (rotns dir) amt 1.0))
+    (throw (js/Error. (str "We don't know how to turn " dir)))))
+
+(defn resize [kshape multiple pwr]
+  (let [pwr      (if (nil? pwr) 1.0 (parseNumber pwr))
+        multiple (Math/pow multiple pwr)]
+    (adjust-shape kshape [* :size multiple])))
+
+(defn grow [kshape & [pwr]] (resize kshape 1.1 pwr))
+(defn shrink [kshape & [pwr]] (resize kshape 0.9 pwr))
 
 (defn newv [a b] b)
 
@@ -168,10 +193,22 @@
 (def green "green")
 (def yellow "yellow")
 
-(defn color [shape c] (adjust-shape shape [newv :color c]))
-(def paint color)
+(defn color [shape c & x] 
+  (if (seq x) (throw (js/Error. (str "What do you mean by " x)))
+      (adjust-shape shape [newv :color c])))
 
-(def verbs {"make" make "move" move "turn" turn "name" rename})
+
+
+(def verbs {"make" make
+            "move" move
+            "turn" turn
+            "name" rename
+            "call" rename
+            "paint" color 
+            "color" color
+            "grow" grow
+            "shrink" shrink
+            })
 
 (defn do-something [line] 
   "sugar for people who don't like to type parentheses.  Check only that
@@ -182,9 +219,7 @@ the first string is a known verb, and the second exists."
     (cond
      (nil? fn) (str "We don't know how to " verb ".")
      (nil? arg) (str verb " what?")
-     :else (apply fn arg moreargs)
-     )
-    ))
+     :else (apply fn arg moreargs))))
 
 (def input (sel1 :#input))
 (def output (sel1 :#output))
@@ -198,15 +233,18 @@ the first string is a known verb, and the second exists."
   (let [line (.-value input)
         cur  (.-value output)
         res  (if (> (count line) 0)
-               (try  (do-something line) 
-                     (catch js/Object e (str "Error " e)))
+               (try  (do (.log js/console "About to process: " line)
+                         (do-something line) )
+                     (catch js/Object e (str e)))
                "Can I help you?")]
-    (set! (.-value output) (str res "\n" line "\n" res))
+    ;(.log js/console (str "Status: " cur " " res))
+    (set! (.-value output) (str "\n" line "\n  " res))
     (set! (.-value input) "")
     )
 )
 
 (defn start []
+  (.log js/console "Starting")
   (let [c (events input :keydown)]
     (go (while true
           (let [v (<! c)
