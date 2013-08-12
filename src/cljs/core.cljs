@@ -218,7 +218,6 @@
 (defn do-something [line] 
   "sugar for people who don't like to type parentheses.  Check only that
 the first string is a known verb, and the second exists."
-  (println line (first line))
   (if (= (first line) "(") (parse line)
       (let [line (str/lower-case line)
             [verb arg & moreargs] (str/split line #"\s+")
@@ -264,22 +263,34 @@ the first string is a known verb, and the second exists."
                             (str/replace line #"\s*([\(\)])\s*" " $1 ")
                             #"\s+")))
 
-(def known-tokens (merge verbs {"+" + "-" - "*" * "/" / "str" str}))
+(defn recursive-eval [x]
+  (println "evaluating" x)
+  (if (seq? x) (apply (first x) (map recursive-eval (rest x)))
+    x))
+
+(defn make-function [& x] 
+  (fn [] (last (map recursive-eval x))))
 
 
-(defn read-tokens [acc tokens]
+(def known-tokens (merge verbs {"+" + "-" - "*" * "/" / "str" str "fn" make-function
+                                "println" println}))
+
+
+(defn read-tokens [acc tokens in-func]
   (loop [acc            acc
          [token & rest] tokens]
+    ;(println "-->" acc (str "\"" token "\"") rest (first rest) in-func)
     (condp  = token 
       nil      acc
       ")"      [(reverse acc) rest]
-      "("      (let [[[verb & other] rest] (read-tokens '() rest)
-                     sub         (apply verb other)
+      "("      (let [[[verb & other] rest] (read-tokens '() rest (= "fn" (first rest)))
+                     sub         (if in-func (conj other verb) (apply verb other))
                      acc         (conj acc sub)]
-                 (read-tokens acc rest))
+                 ;(println "--->" in-func verb other rest sub acc)
+                 (recur acc rest))
       (recur (conj acc (or (known-tokens token) (maybeParseNumber token))) rest))))
 
-(defn parse [s] (read-tokens () (tokenize s)))
+(defn parse [s] (read-tokens () (tokenize s) false))
 
 
 
