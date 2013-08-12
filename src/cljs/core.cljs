@@ -266,14 +266,14 @@ the first string is a known verb, and the second exists."
 (defn recursive-eval [x]
   (println "evaluating" x)
   (if (seq? x) (apply (first x) (map recursive-eval (rest x)))
-    x))
+      x))
 
 (defn make-function [& x] 
   (fn [] (last (map recursive-eval x))))
 
 
 (def known-tokens (merge verbs {"+" + "-" - "*" * "/" / "str" str "fn" make-function
-                                "println" println}))
+                                "repeatedly" repeatedly}))
 
 
 (defn read-tokens [acc tokens in-func]
@@ -291,7 +291,3 @@ the first string is a known verb, and the second exists."
       (recur (conj acc (or (known-tokens token) (maybeParseNumber token))) rest))))
 
 (defn parse [s] (read-tokens () (tokenize s) false))
-
-
-
-
