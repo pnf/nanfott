@@ -1,5 +1,6 @@
 (ns nanfott.core
   (:require [cljs.core.async :refer [>! <! chan put! take! timeout close!]]
+            [cljs.core.match]
             [goog.dom :as dom]
             ;[clojure.browser.dom :as dom]
             [dommy.utils :as utils]
@@ -9,6 +10,7 @@
             [clojure.browser.repl :as repl])
   (:use-macros
    [dommy.macros :only [sel sel1 node]]
+   [cljs.core.match.macros :only [match]]
    )
   (:require-macros [cljs.core.async.macros :refer [go alt!]])
 )
@@ -163,6 +165,8 @@
       (try (let [x (int (* scale (sgn v) (parseNumber amt)))] [f k x])
            (catch js/Object e (throw (js/Error. (str amt " is not a number:" e)))))))
 
+(defn maybeParseNumber [amt] (try (parseNumber amt) (catch js/Object e amt)))
+
 (def up "up")
 (def down "down")
 (def right "right")
@@ -210,16 +214,19 @@
             "shrink" shrink
             })
 
+
 (defn do-something [line] 
   "sugar for people who don't like to type parentheses.  Check only that
 the first string is a known verb, and the second exists."
-  (let [line (str/lower-case line)
-        [verb arg & moreargs] (str/split line #"\s+")
-        fn   (get verbs verb)]
-    (cond
-     (nil? fn) (str "We don't know how to " verb ".")
-     (nil? arg) (str verb " what?")
-     :else (apply fn arg moreargs))))
+  (println line (first line))
+  (if (= (first line) "(") (parse line)
+      (let [line (str/lower-case line)
+            [verb arg & moreargs] (str/split line #"\s+")
+            fn   (get verbs verb)]
+        (cond
+         (nil? fn) (str "We don't know how to " verb ".")
+         (nil? arg) (str verb " what?")
+         :else (apply fn arg moreargs)))))
 
 (def input (sel1 :#input))
 (def output (sel1 :#output))
@@ -237,11 +244,11 @@ the first string is a known verb, and the second exists."
                          (do-something line) )
                      (catch js/Object e (str e)))
                "Can I help you?")]
-    ;(.log js/console (str "Status: " cur " " res))
+                                        ;(.log js/console (str "Status: " cur " " res))
     (set! (.-value output) (str "\n" line "\n  " res))
     (set! (.-value input) "")
     )
-)
+  )
 
 (defn start []
   (.log js/console "Starting")
@@ -250,4 +257,30 @@ the first string is a known verb, and the second exists."
           (let [v (<! c)
                 v (.-keyCode v)]
             (if (= v 13) (eval-input)))))))
+
+
+(defn tokenize [line] 
+  (filter #(> (count %) 0) (str/split
+                            (str/replace line #"\s*([\(\)])\s*" " $1 ")
+                            #"\s+")))
+
+(def known-tokens (merge verbs {"+" + "-" - "*" * "/" / "str" str}))
+
+
+(defn read-tokens [acc tokens]
+  (loop [acc            acc
+         [token & rest] tokens]
+    (condp  = token 
+      nil      acc
+      ")"      [(reverse acc) rest]
+      "("      (let [[[verb & other] rest] (read-tokens '() rest)
+                     sub         (apply verb other)
+                     acc         (conj acc sub)]
+                 (read-tokens acc rest))
+      (recur (conj acc (or (known-tokens token) (maybeParseNumber token))) rest))))
+
+(defn parse [s] (read-tokens () (tokenize s)))
+
+
+
 
