@@ -15,9 +15,9 @@
   (:require-macros [cljs.core.async.macros :refer [go alt!]])
 )
 
-(defrecord Attr [x y size rotation color])
+(defrecord Attr [x y z size rotation color])
 
-(def default-shape (Attr. 100 100 100 0.0 "red"))
+(def default-shape (Attr. 100 100 0 100 0.0 "red"))
 
 (def box (dommy.macros/sel1 "#outerBox"))
 
@@ -27,6 +27,7 @@
                           el)))
 
 (def dom-mutations (chan (dropping-buffer 1000)))
+
 (go (while true (let [job (<! dom-mutations)]
                   (.log js/console (str "Got " job))
                   (condp = (:task job)
@@ -52,16 +53,17 @@
   Shape
   (build [shape]
    (let [{:keys [element attr]} shape
-        {:keys [x y size rotation color]} attr
+        {:keys [x y z size rotation color]} attr
         style    (concat ["width"   "0"
                           "height"  "0"
                           "left"    (str x)
                           "bottom"  (str y)
+                          "z-index" (str z)
                           "border-bottom" (str size "px solid " color)
                           "border-left"   (str (/ size 2) "px solid transparent")
                           "border-right" (str (/ size 2) "px solid transparent")
                           "position" "absolute"
-                          "-webkit-transition" " width 2s ease, height 2s ease"
+                          "-webkit-transition" " width 0.5s ease, height 0.5s ease"
                           "-webkit-transform" (str "rotate(" rotation "deg) ")])
         element  (or element (gensym))]
      (go (>! dom-mutations {:task :set-style :element element :style style}))
@@ -78,9 +80,10 @@
   Shape
   (build [shape]
    (let [{:keys [element attr]} shape
-        {:keys [x y size rotation color]} attr
+        {:keys [x y z size rotation color]} attr
         style    (concat ["width"   (str size)
                           "height"  (str size)
+                          "z-index" (str z)
                           "background" color
                           "-webkit-border-radius" (str (/ size 2))
                           "moz-border-radius" (str (/ size 2))
@@ -88,7 +91,7 @@
                           "position" "absolute"
                           "left"    (str x)
                           "bottom"  (str y)
-                          "-webkit-transition" " width 2s ease, height 2s ease"
+                          "-webkit-transition" " width 0.5s ease, height 0.5s ease"
                           "-webkit-transform" (str "rotate(" rotation "deg) ")])
         element  (or element (gensym))]
      (go (>! dom-mutations {:task :set-style :element element :style style}))
@@ -104,14 +107,15 @@
   Shape
   (build [shape]
    (let [{:keys [element attr]} shape
-        {:keys [x y size rotation color]} attr
+        {:keys [x y z size rotation color]} attr
         style    (concat ["width"   (str size)
                           "height"  (str size)
+                          "z-index" (str z)
                           "background" color
                           "position" "absolute"
                           "left"    (str x)
                           "bottom"  (str y)
-                          "-webkit-transition" " width 2s ease, height 2s ease"
+                          "-webkit-transition" " width 0.5s ease, height 0.5s ease"
                           "-webkit-transform" (str "rotate(" rotation "deg) ")])
         element  (or element (gensym))]
      (go (>! dom-mutations {:task :set-style :element element :style style}))
@@ -181,7 +185,8 @@
 (def down "down")
 (def right "right")
 (def left "left")
-(def dirs {"up" [+ :y 100] "down" [- :y 100] "left" [- :x 100] "right" [+ :x 100]})
+(def dirs {"up" [+ :y 100] "down" [- :y 100] "left" [- :x 100] "right" [+ :x 100]
+           "closer" [+ :z 1] "further" [- :z 1] "back" [- :z 1]})
 
 (defn move [kshape dir & amt]  (adjust-shape kshape (adjust-amt (dirs dir) amt 10)))
 
