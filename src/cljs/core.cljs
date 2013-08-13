@@ -1,5 +1,5 @@
 (ns nanfott.core
-  (:require [cljs.core.async :refer [>! <! chan put! take! timeout close!]]
+  (:require [cljs.core.async :refer [>! <! chan put! take! timeout close! dropping-buffer]]
             [cljs.core.match]
             [goog.dom :as dom]
             ;[clojure.browser.dom :as dom]
@@ -15,22 +15,31 @@
   (:require-macros [cljs.core.async.macros :refer [go alt!]])
 )
 
-;; (def x (dmy/set-style! (node [:div {:id "dot"}]) "z-index" "1" "-webkit-transition" "left 2s ease, top 2s ease"   "width" "10px" "height" "10px" "background-color" "red" "position" "absolute" "left" "30px" "top" "30px"))
-;; (dommy/append! (sel1 :body) x)
-;; (def x (dmy/set-style! x "left" "30px" "top" "30px"))
-;;                                         ;triangle
-;; (def x (dmy/set-style! x "width" "0" "height" "0" "border-bottom" "120px solid green" "border-left" "60px solid transparent" "border-right" "60px solid transparent"))
-;; (.-value (aget (.-attributes x) 1))
-;; (.-value (aget (.-attributes (second (dmy/ancestor-nodes x))) 0))
-;; (sel1 :#outerBox)
-;; (sel1 "#outerBox")
-;; (sel1 :#text )
-
 (defrecord Attr [x y size rotation color])
 
 (def default-shape (Attr. 100 100 100 0.0 "red"))
 
 (def box (dommy.macros/sel1 "#outerBox"))
+
+(defn getById [id] (or  (and id (dommy.macros/sel1 (str "#" id)))
+                        (let [el (dommy.macros/node [:div {:id (str id)}])]
+                          (dmy/append! box el)
+                          el)))
+
+(def dom-mutations (chan (dropping-buffer 1000)))
+(go (while true (let [job (<! dom-mutations)]
+                  (.log js/console (str "Got " job))
+                  (condp = (:task job)
+                    :set-style (let [element (getById (:element job))
+                                     style (:style job)]
+                                 (.log js/console "Setting style")
+                                 (apply (partial dmy/set-style! element) style))
+                    :pause     (let [t (:msec job)]
+                                 (.log js/console (str "Pausing for " t " msec"))
+                                 (<! (timeout t))
+                                 (.log js/console "Paused")
+                                 )))))
+
 
 (defprotocol Shape
   "Maintain pretty shapes"
@@ -44,7 +53,6 @@
   (build [shape]
    (let [{:keys [element attr]} shape
         {:keys [x y size rotation color]} attr
-        element  (or element (dommy.macros/node [:div {:id (str (gensym))}]))
         style    (concat ["width"   "0"
                           "height"  "0"
                           "left"    (str x)
@@ -55,12 +63,15 @@
                           "position" "absolute"
                           "-webkit-transition" " width 2s ease, height 2s ease"
                           "-webkit-transform" (str "rotate(" rotation "deg) ")])
-        element           (apply (partial dmy/set-style! element) style)]
-    (->Triangle attr element)))
+        element  (or element (gensym))]
+     (go (>! dom-mutations {:task :set-style :element element :style style}))
+     (->Triangle attr element)))
   (update [shape attr]
     (build (->Triangle attr (:element shape))))
   (archname [shape] "triangle")
 )
+
+
 (def triangle ->Triangle)
 
 (defrecord Circle [attr element]
@@ -68,7 +79,6 @@
   (build [shape]
    (let [{:keys [element attr]} shape
         {:keys [x y size rotation color]} attr
-        element  (or element (dommy.macros/node [:div {:id (str (gensym))}]))
         style    (concat ["width"   (str size)
                           "height"  (str size)
                           "background" color
@@ -80,8 +90,9 @@
                           "bottom"  (str y)
                           "-webkit-transition" " width 2s ease, height 2s ease"
                           "-webkit-transform" (str "rotate(" rotation "deg) ")])
-        element           (apply (partial dmy/set-style! element) style)]
-    (->Circle attr element)))
+        element  (or element (gensym))]
+     (go (>! dom-mutations {:task :set-style :element element :style style}))
+     (->Circle attr element)))
   (update [shape attr]
     (build (->Circle attr (:element shape))))
   (archname [shape] "circle")
@@ -94,7 +105,6 @@
   (build [shape]
    (let [{:keys [element attr]} shape
         {:keys [x y size rotation color]} attr
-        element  (or element (dommy.macros/node [:div {:id (str (gensym))}]))
         style    (concat ["width"   (str size)
                           "height"  (str size)
                           "background" color
@@ -103,8 +113,9 @@
                           "bottom"  (str y)
                           "-webkit-transition" " width 2s ease, height 2s ease"
                           "-webkit-transform" (str "rotate(" rotation "deg) ")])
-        element           (apply (partial dmy/set-style! element) style)]
-    (->Square attr element)))
+        element  (or element (gensym))]
+     (go (>! dom-mutations {:task :set-style :element element :style style}))
+     (->Square attr element)))
   (update [shape attr]
     (build (->Square attr (:element shape))))
   (archname [shape] "square")
@@ -141,7 +152,6 @@
     (let  [empty (fcty default-shape nil)
            shape (build  empty)
            arch  (archname shape)]
-      (dmy/append! box (:element shape))
       (swap! items #(assoc % "it" shape arch shape))
       (str "We made a " fctyp))
     "We don't know how to make that"))
@@ -201,6 +211,9 @@
   (if (seq x) (throw (js/Error. (str "What do you mean by " x)))
       (adjust-shape shape [newv :color c])))
 
+(defn pause [msec]
+  (let [sec (parseNumber msec)]
+    (go (>! dom-mutations {:task :pause :msec msec}))))
 
 
 (def verbs {"make" make
@@ -212,8 +225,8 @@
             "color" color
             "grow" grow
             "shrink" shrink
+            "pause" pause
             })
-
 
 (defn do-something [line] 
   "sugar for people who don't like to type parentheses.  Check only that
@@ -244,8 +257,9 @@ the first string is a known verb, and the second exists."
                      (catch js/Object e (str e)))
                "Can I help you?")]
                                         ;(.log js/console (str "Status: " cur " " res))
-    (set! (.-value output) (str "\n" line "\n  " res))
+    (set! (.-value output) (str cur "\n" line "\n  " res))
     (set! (.-value input) "")
+    (set! (.-scrollTop output) (.-scrollHeight output))
     )
   )
 
@@ -264,30 +278,29 @@ the first string is a known verb, and the second exists."
                             #"\s+")))
 
 (defn recursive-eval [x]
-  (println "evaluating" x)
   (if (seq? x) (apply (first x) (map recursive-eval (rest x)))
       x))
 
 (defn make-function [& x] 
   (fn [] (last (map recursive-eval x))))
 
-
 (def known-tokens (merge verbs {"+" + "-" - "*" * "/" / "str" str "fn" make-function
                                 "repeatedly" repeatedly}))
-
 
 (defn read-tokens [acc tokens in-func]
   (loop [acc            acc
          [token & rest] tokens]
-    ;(println "-->" acc (str "\"" token "\"") rest (first rest) in-func)
     (condp  = token 
       nil      acc
       ")"      [(reverse acc) rest]
       "("      (let [[[verb & other] rest] (read-tokens '() rest (= "fn" (first rest)))
                      sub         (if in-func (conj other verb) (apply verb other))
                      acc         (conj acc sub)]
-                 ;(println "--->" in-func verb other rest sub acc)
                  (recur acc rest))
       (recur (conj acc (or (known-tokens token) (maybeParseNumber token))) rest))))
 
 (defn parse [s] (read-tokens () (tokenize s) false))
+
+;looping
+;(go (while true (let [x (<! c)] (.log js/console x) (if (> x 0) (go (>! c (dec x)))))))
+
