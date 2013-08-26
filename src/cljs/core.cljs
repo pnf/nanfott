@@ -7,7 +7,10 @@
             [dommy.core :as dmy]
             [dommy.attrs :as attrs]
             [clojure.string :as str]
-            [clojure.browser.repl :as repl])
+            [clojure.browser.repl :as repl]
+            [jayq.core :as jq]
+            )
+  (:use [jayq.core :only [$ css html]])
   (:use-macros
    [dommy.macros :only [sel sel1 node]]
    [cljs.core.match.macros :only [match]]
@@ -253,15 +256,17 @@ the first string is a known verb, and the second exists."
     (dmy/listen! el type (fn [e] (put! out e)))
     out))
 
-(defn eval-input []
+
+(defn eval-input [line] (if (> (count line) 0)
+                      (try  (do (.log js/console "About to process: " line)
+                                (do-something line) )
+                            (catch js/Object e (str e)))
+                      "Can I help you?"))
+
+(defn eval-input-field []
   (let [line (.-value input)
         cur  (.-value output)
-        res  (if (> (count line) 0)
-               (try  (do (.log js/console "About to process: " line)
-                         (do-something line) )
-                     (catch js/Object e (str e)))
-               "Can I help you?")]
-                                        ;(.log js/console (str "Status: " cur " " res))
+        res  (eval-input line)]
     (set! (.-value output) (str cur "\n" line "\n  " res))
     (set! (.-value input) "")
     (set! (.-scrollTop output) (.-scrollHeight output))
@@ -269,12 +274,18 @@ the first string is a known verb, and the second exists."
   )
 
 (defn start []
+  (.log js/console "Starting terminal")
+  (.terminal ($ :#terminal) (fn [c t] (eval-input c)) (js-obj "greetings" "Hello!"
+                                                              "scrollHeight" "1400px"))
+)
+
+#_(defn start []
   (.log js/console "Starting")
   (let [c (events input :keydown)]
     (go (while true
           (let [v (<! c)
                 v (.-keyCode v)]
-            (if (= v 13) (eval-input)))))))
+            (if (= v 13) (eval-input-field)))))))
 
 
 (defn tokenize [line] 
@@ -308,4 +319,16 @@ the first string is a known verb, and the second exists."
 
 ;looping
 ;(go (while true (let [x (<! c)] (.log js/console x) (if (> x 0) (go (>! c (dec x)))))))
+
+
+;; (jq/html ($ :body))
+
+;; (jq/prop ($ :#output) "rows")  ; 4
+;; (jq/attr ($ :#output) "rows")  ; "4"
+;; (jq/attr ($ :#nonexistent) "rows") ; nil
+;; (jq/attr ($ :#terminal) "id") ; "terminal"
+;; (.prop ($ :#terminal) "id") : terminal
+;;                                         ;(defn cb [cmd term] (.echo term (str "bleh> " cmd " <helb")))
+;; (defn cb [cmd term] (str "bleh> " cmd " <helb"))
+;; (.terminal ($ :#terminal) cb (js-obj "prompt" ">>>>" "greetings" "Hello" )) 
 

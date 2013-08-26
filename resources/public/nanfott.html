@@ -16,6 +16,9 @@
 	        list-style-type: none;
 	    }
         </style>
+	<script src="tp/jquery-1.10.2.min.js" type="text/javascript"></script>
+	<script src="tp/jquery.terminal-0.7.5.min.js" type="text/javascript"></script>
+	<link href="css/jquery.terminal.css" rel="stylesheet">
     </head>
     <body>
 	<div id="outerBox"> </div>
@@ -45,12 +48,11 @@
 	  </ul>
 	</div>
 	<p/>
-	<textarea id="output" rows="4" cols="50" readonly>
-        </textarea>
-	<p/>
-	<input type="text" id="input" size="100">
-
+	<!-- <textarea id="output" rows="4" cols="50" readonly>
+        </textarea>	<p/>
+	<input type="text" id="input" size="100"> -->
+	<div id="terminal"/>
         <script src="js/main.js" type="text/javascript"></script>
-	<script> nanfott.core.start() </script>
+	<script>nanfott.core.start();</script>
     </body>
 </html>

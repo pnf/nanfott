@@ -11,9 +11,10 @@
                  [org.clojure/core.match "0.2.0-rc5"]
                  [com.cemerick/piggieback "0.1.0"]
                  [compojure "1.1.5"]
+                 [jayq "2.4.0"]
                  [ring "1.2.0"]
                  [prismatic/dommy "0.1.1"]
-                 [instaparse "1.2.2"]
+                 ;[instaparse "1.2.2"]
                  ]
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
