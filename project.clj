@@ -9,27 +9,30 @@
                  [org.clojure/clojurescript "0.0-1853"]
                  [org.clojure/core.async "0.1.0-SNAPSHOT"]
                  [org.clojure/core.match "0.2.0-rc5"]
-                 [com.cemerick/piggieback "0.1.0"]
+;                 [com.cemerick/piggieback "0.1.0"]
                  [compojure "1.1.5"]
                  [jayq "2.4.0"]
                  [ring "1.2.0"]
+                 [enlive "1.1.1"]
                  [prismatic/dommy "0.1.1"]
                  ;[instaparse "1.2.2"]
                  ]
 
-  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+;  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+  :repl-options {:init-ns nanfott.core}
 
-  ; So ordinary clj repl can be turned into a clojurescript repl via (browser-repl)
-  :injections [(require '[cljs.repl.browser :as brepl]
-                        '[cemerick.piggieback :as pb])
-               (defn browser-repl []
-                 (pb/cljs-repl :repl-env
-                               (doto (brepl/repl-env :port 9000)
-                                      cljs.repl/-setup)))]
+  ;; ; So ordinary clj repl can be turned into a clojurescript repl via (browser-repl)
+  ;; :injections [(require '[cljs.repl.browser :as brepl]
+  ;;                       '[cemerick.piggieback :as pb])
+  ;;              (defn browser-repl []
+  ;;                (pb/cljs-repl :repl-env
+  ;;                              (doto (brepl/repl-env :port 9000)
+  ;;                                     cljs.repl/-setup)))]
 
 
   :plugins [[lein-cljsbuild "0.3.2"]
-            [lein-ring "0.8.5"]]
+            ;[lein-ring "0.8.5"]
+            [com.cemerick/austin "0.1.0"]]
 
   :ring {:handler nanfott.core/handle}
 

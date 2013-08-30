@@ -1,16 +1,33 @@
 (ns nanfott.core
-  (:use compojure.core)
-  (:require  [compojure.handler :as handler]
-             [compojure.route :as route])
-)
+  (:require [cemerick.austin.repls :refer (browser-connected-repl-js)]
+            [net.cgrand.enlive-html :as enlive]
+            [compojure.route :refer (resources)]
+            [compojure.core :refer (GET defroutes)]  
+            ring.adapter.jetty
+            [clojure.java.io :as io]))                                 
 
-(defroutes app-routes
-  ; to serve document root address
-  (GET "/" [] "<p>Hello from compojure</p>")
-  ; to serve static pages saved in resources/public directory
-  (route/resources "/")
-  ; if page is not found
-  (route/not-found "Page not found"))
+(enlive/deftemplate page
+  (io/resource "public/nanfott.html")
+  []
+  ; inject repl connection code
+  [:body] (enlive/append
+            (enlive/html [:script (browser-connected-repl-js)])))
 
-(def handle
-  (handler/site app-routes))
+(defroutes site
+  (resources "/") 
+  (GET "/*" req (page)))
+
+(defn run-server
+  []
+  (defonce ^:private server
+    (ring.adapter.jetty/run-jetty #'site {:port 8080 :join? false}))
+  server)
+
+(def repl-env (reset! cemerick.austin.repls/browser-repl-env
+                      (cemerick.austin/repl-env)))
+
+(defn connect-repl []
+  (cemerick.austin.repls/cljs-repl repl-env))
+
+
+(println "(run-server) to start ring; (connect-repl) to switch to cljs repl")
