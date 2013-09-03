@@ -20,6 +20,7 @@
 (defn run-server
   []
   (defonce ^:private server
+    (println "Starting server at port 8080")
     (ring.adapter.jetty/run-jetty #'site {:port 8080 :join? false}))
   server)
 

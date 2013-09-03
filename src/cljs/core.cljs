@@ -293,27 +293,55 @@ the first string is a known verb, and the second exists."
                             (str/replace line #"\s*([\(\)])\s*" " $1 ")
                             #"\s+")))
 
-(defn recursive-eval [x]
-  (if (seq? x) (apply (first x) (map recursive-eval (rest x)))
-      x))
+(defn pandr [dop text expr] (when dop (println text expr)) expr)
 
-(defn make-function [& x] 
-  (fn [] (last (map recursive-eval x))))
+(defn recursive-eval [vars x]
+  ;(to-console "Attempting to evaluate" vars x (coll? x))
+  (if (coll? x) (let [res (map (partial recursive-eval vars) (rest x) )]
+                  ;(to-console "Applying" (first x) (type (first x)) "to" res)
+                 (pandr 1 "result of application" (apply (first x) res))
+                  )
+      (or (vars x) x)))
 
-(def known-tokens (merge verbs {"+" + "-" - "*" * "/" / "str" str "fn" make-function
-                                "repeatedly" repeatedly}))
+(def known-variables (atom {}))
+
+(defn to-console [& stuff]
+  (.log js/console (str/join " " stuff)))
+
+(def known-functions (atom (merge verbs 
+                                  {"+" + "-" - "*" * "/" / "str" str
+                                   "fn" make-function
+                                   "defn" define-function
+                                   "repeatedly" repeatedly
+                                   "print" to-console})))
+(defn make-function  [vars & body]
+  (to-console "Making a function with variables" vars ", body" body)
+  (fn [& vals] 
+    ;(to-console "executing" vars vals body)
+    (let [vars (zipmap vars vals)]
+      ;(to-console "remapping vars=" vars "body=" body)
+      (last (map (partial recursive-eval vars) body)))))
+
+(defn define-function [name vars & body]
+  (.log js/console "Here i am")
+  (let [f (apply make-function vars body)]
+    (swap! known-functions assoc name f)
+    (to-console (@known-functions name))
+    (str "Defined function " name "=" body)))
+
 
 (defn read-tokens [acc tokens in-func]
   (loop [acc            acc
          [token & rest] tokens]
+    ;(to-console "acc=" acc  "token=" token "rest=" rest "tokens=" tokens   "infunc=" in-func)
     (condp  = token 
       nil      acc
       ")"      [(reverse acc) rest]
-      "("      (let [[[verb & other] rest] (read-tokens '() rest (= "fn" (first rest)))
+      "("      (let [[[verb & other] rest] (read-tokens '() rest (or in-func (re-matches #"fn|defn" (first rest))))
                      sub         (if in-func (conj other verb) (apply verb other))
                      acc         (conj acc sub)]
                  (recur acc rest))
-      (recur (conj acc (or (known-tokens token) (maybeParseNumber token))) rest))))
+      (recur (conj acc (or (@known-functions token) (@known-variables token) (maybeParseNumber token))) rest))))
 
 (defn parse [s] (read-tokens () (tokenize s) false))
 
