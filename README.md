@@ -1,7 +1,7 @@
 # nanfott
 
 A programming language for an extremely specific child. 
-Deployed [here](http://podsnap.com/nanfott/nanfott.html)
+Deployed [here](http://nanfott.podsnap.com)
 
 Nanfott provides immediate gratification for child who's basically illiterate, with a
 path towards Turing completeness when she gets bored.
